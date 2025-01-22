@@ -1,7 +1,7 @@
 <p align="center">
   <img src="assets/logo.png" alt="Logo" width="150"/>
 </p>
-<h3  align="center">Apollo: Band-sequence Modeling for High-Quality Audio Restoration</h3>
+<h3  align="center">TIGER: Time-frequency Interleaved Gain Extraction and Reconstruction for Efficient Speech Separation</h3>
 <p align="center">
   <strong>Mohan Xu<sup>*</sup>, Kai Li<sup>*</sup>, Guo Chen, Xiaolin Hu</strong><br>
     <strong>Tsinghua University, Beijing, China</strong><br>

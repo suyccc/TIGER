@@ -6,7 +6,7 @@
   <strong>Mohan Xu<sup>*</sup>, Kai Li<sup>*</sup>, Guo Chen, Xiaolin Hu</strong><br>
     <strong>Tsinghua University, Beijing, China</strong><br>
     <strong><sup>*</sup>Equal contribution</strong><br>
-  <a href="https://arxiv.org/abs/2409.08514">📜 ICLR 2025</a> | <a href="https://cslikai.cn/TIGER/">🎶 Demo</a> | <a href="https://huggingface.co/datasets/JusperLee/EchoSet">🤗 Dataset</a>
+  <a href="https://arxiv.org/abs/2410.01469">📜 ICLR 2025</a> | <a href="https://cslikai.cn/TIGER/">🎶 Demo</a> | <a href="https://huggingface.co/datasets/JusperLee/EchoSet">🤗 Dataset</a>
 
 <p align="center">
   <img src="https://visitor-badge.laobi.icu/badge?page_id=JusperLee.TIGER" alt="访客统计" />

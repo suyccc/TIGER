@@ -2,12 +2,12 @@
 audionet:
   audionet_name: TIGER
   audionet_config:
-    out_channels: 24
-    in_channels: 64
-    num_blocks: 4
+    out_channels: 128
+    in_channels: 256
+    num_blocks: 8
     upsampling_depth: 5
-    win: 512
-    stride: 256
+    win: 640
+    stride: 160
     num_sources: 2
 
 # Loss config

@@ -20,14 +20,11 @@ model.eval()
 
 audio = torchaudio.load(parser.parse_args().audio_path)[0].to(device)
 with torch.no_grad():
-    all_target_dialog, all_target_effect, all_target_music = model(audio[None])
+    ests_speech = model(audio[None])
 
 torchaudio.save(
-    f"test/dialog.wav", all_target_dialog[0].unsqueeze(0).cpu(), 16000
+    f"test/spk1.wav", ests_speech[:,0].squeeze(0).cpu(), 16000
 )
 torchaudio.save(
-    f"test/effect.wav", all_target_effect[0].unsqueeze(0).cpu(), 16000
-)
-torchaudio.save(
-    f"test/music.wav", all_target_music[0].unsqueeze(0).cpu(), 16000
+    f"test/spk2.wav", ests_speech[:,1].squeeze(0).cpu(), 16000
 )

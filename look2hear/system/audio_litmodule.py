@@ -73,7 +73,7 @@ class AudioLightningModule(pl.LightningModule):
         return self.audio_model(wav)
 
     def training_step(self, batch, batch_nb):
-        mixtures, targets, _ = batch
+        mixtures, targets, _, _ = batch
         
         new_targets = []
         min_len = -1

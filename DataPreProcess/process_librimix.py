@@ -46,11 +46,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_dir",
         type=str,
-        default=None,
+        default='/gpfs-flash/hulab/public_datasets/audio_datasets/librispeech/Libri2Mix/wav16k/min',
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
-        "--out_dir", type=str, default=None, help="Directory path to put output files"
+        "--out_dir", type=str, default='Librimix', help="Directory path to put output files"
     )
     args = parser.parse_args()
     print(args)

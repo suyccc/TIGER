@@ -53,19 +53,19 @@ scheduler:
 
 # Data config
 datamodule:
-  data_name: EchoSetDataModule
+  data_name: LibriUMixModuleRemix
   data_config:
-    train_dir: DataPreProcess/EchoSet/train
-    valid_dir: DataPreProcess/EchoSet/val
-    test_dir: DataPreProcess/EchoSet/test
-    n_src: 2
+    train_dir: DataPreProcess/unknown_speaker/LibriUmix/train-100
+    valid_dir: DataPreProcess/unknown_speaker/LibriUmix/dev
+    test_dir: DataPreProcess/unknown_speaker/LibriUmix/test
+    n_src: 3
     sample_rate: 16000
     segment: 3.0
     normalize_audio: false
-    batch_size: 1
+    batch_size: 2
     num_workers: 8
     pin_memory: true
     persistent_workers: false
 
 exp:
-  exp_name: TIGER-EchoSet
+  exp_name: TIGER-LibriUMix

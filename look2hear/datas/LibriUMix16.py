@@ -158,7 +158,7 @@ class Libri2MixDataset(Dataset):
                 mixture = normalize_tensor_wav(mixture, eps=self.EPS, std=m_std)
                 target = normalize_tensor_wav(target, eps=self.EPS, std=m_std)
             return mixture, target.unsqueeze(0), self.mix[idx][0].split("/")[-1]
-        # import pdb; pdb.set_trace()
+
         if self.n_src == 2:
             if self.mix[idx][1] == self.seg_len or self.test:
                 rand_start = 0
@@ -405,4 +405,8 @@ class LibriUMixModuleRemix(LightningDataModule):
     @property
     def make_loader(self):
         return self.train_dataloader(), self.val_dataloader(), self.test_dataloader()
+
+    @property
+    def make_sets(self):
+        return self.data_train, self.data_val, self.data_test
         

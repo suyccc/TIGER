@@ -556,6 +556,8 @@ class TIGER(BaseModel):
         self.separator = Recurrent(self.feature_dim, in_channels, self.nband, upsampling_depth, att_n_head, att_hid_chan, att_kernel_size, att_stride, num_blocks)       
         
         self.mask = nn.ModuleList([])
+        # print(self.feature_dim)
+        # print(self.num_sources)
         for i in range(self.nband):
             self.mask.append(nn.Sequential(
                                            nn.PReLU(),

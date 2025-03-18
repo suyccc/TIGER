@@ -52,6 +52,7 @@ def main(config):
         metricscolumn
     )
     # import pdb; pdb.set_trace()
+    config["train_conf"]["main_args"] = {}
     config["train_conf"]["main_args"]["exp_dir"] = os.path.join(
         os.getcwd(), "Experiments", "checkpoint", config["train_conf"]["exp"]["exp_name"]
     )
@@ -65,6 +66,7 @@ def main(config):
     )
     if config["train_conf"]["training"]["gpus"]:
         device = "cuda"
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
         model.to(device)
     model_device = next(model.parameters()).device
     datamodule: object = getattr(look2hear.datas, config["train_conf"]["datamodule"]["data_name"])(
@@ -81,28 +83,30 @@ def main(config):
     torch.no_grad().__enter__()
     with progress:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
         for idx in progress.track(range(len(test_set))):
-            if idx == 825:
+            if idx % 100 == 0:
                 # Forward the network on the mixture.
-                mix, sources, key = tensors_to_device(test_set[idx],
+                mix, sources, key, num_spks = tensors_to_device(test_set[idx],
                                                         device=model_device)
                 est_sources = model(mix[None])
                 mix_np = mix
                 sources_np = sources
                 est_sources_np = est_sources.squeeze(0)
-                # metrics(mix=mix_np,
-                #         clean=sources_np,
-                #         estimate=est_sources_np,
-                #         key=key)
+                metrics(mix=mix_np,
+                        clean=sources_np,
+                        estimate=est_sources_np,
+                        key=key,
+                        n_src=num_spks)
                 save_dir = os.path.join("./result/TIGER", "idx{}".format(idx))
                 # est_sources_np = normalize_tensor_wav(est_sources_np)
                 for i in range(est_sources_np.shape[0]):
                     os.makedirs(os.path.join(save_dir, "s{}/".format(i + 1)), exist_ok=True)
                     # torchaudio.save(os.path.join(save_dir, "s{}/".format(i + 1)) + key, est_sources_np[i].unsqueeze(0).cpu(), 16000)
-                    torchaudio.save(os.path.join(save_dir, "s{}/".format(i + 1)) + key.split("/")[-1], est_sources_np[i].unsqueeze(0).cpu(), 16000)
-                # if idx % 50 == 0:
-                #     metricscolumn.update(metrics.update())
+                    torchaudio.save(os.path.join(save_dir, "s{}/".format(i + 1)) + f"real_{key.split('/')[-1]}", sources_np[i].unsqueeze(0).cpu(), 16000)
+                    torchaudio.save(os.path.join(save_dir, "s{}/".format(i + 1)) + f"est_{key.split('/')[-1]}", est_sources_np[i].unsqueeze(0).cpu(), 16000)
+                print(f"Saved {idx}th example with {num_spks} speakers.")
+                if idx % 50 == 0:
+                    metricscolumn.update(metrics.update())
     metrics.final()
-
 
 if __name__ == "__main__":
     args = parser.parse_args()

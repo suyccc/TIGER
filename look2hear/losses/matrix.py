@@ -11,7 +11,30 @@ class PairwiseNegSDR(_Loss):
         self.take_log = take_log
         self.EPS = EPS
 
-    def forward(self, ests, targets):
+    def forward(self, ests, targets, n_src=None):
+        # Filter sources based on energy if n_src is specified and different
+        input_n_src = targets.size(1)
+        if n_src is not None and n_src != input_n_src:
+            # Calculate energy for each source
+            target_energy = torch.sum(targets ** 2, dim=2)  # [batch, n_src]
+            est_energy = torch.sum(ests ** 2, dim=2)        # [batch, n_src]
+            
+            # Get indices of n_src sources with highest energy for targets
+            _, target_indices = torch.topk(target_energy, k=n_src, dim=1)  # [batch, n_src]
+            # Get indices of n_src sources with highest energy for estimates
+            _, est_indices = torch.topk(est_energy, k=n_src, dim=1)        # [batch, n_src]
+            
+            # Create batch indexing
+            batch_indices = torch.arange(targets.size(0)).unsqueeze(1).expand(-1, n_src)
+            
+            # Select top n_src sources
+            filtered_targets = targets[batch_indices, target_indices]  # [batch, n_src, time]
+            filtered_ests = ests[batch_indices, est_indices]          # [batch, n_src, time]
+            
+            # Replace original tensors with filtered ones
+            targets = filtered_targets
+            ests = filtered_ests
+        
         if targets.size() != ests.size() or targets.ndim != 3:
             raise TypeError(
                 f"Inputs must be of shape [batch, n_src, time], got {targets.size()} and {ests.size()} instead"

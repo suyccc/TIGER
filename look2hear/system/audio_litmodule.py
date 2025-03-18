@@ -73,7 +73,7 @@ class AudioLightningModule(pl.LightningModule):
         return self.audio_model(wav)
 
     def training_step(self, batch, batch_nb):
-        mixtures, targets, _, _ = batch
+        mixtures, targets, mix_id, num_spks = batch
         
         new_targets = []
         min_len = -1
@@ -101,7 +101,7 @@ class AudioLightningModule(pl.LightningModule):
                 mixtures = targets.sum(1)
         # print(mixtures.shape)
         est_sources = self(mixtures)
-        loss = self.loss_func["train"](est_sources, targets)
+        loss = self.loss_func["train"](est_sources, targets, num_spks)
 
         self.log(
             "train_loss",
@@ -118,10 +118,10 @@ class AudioLightningModule(pl.LightningModule):
     def validation_step(self, batch, batch_nb, dataloader_idx):
         # cal val loss
         if dataloader_idx == 0:
-            mixtures, targets, _ = batch
-            # print(mixtures.shape)
+            mixtures, targets, mix_id, num_spks = batch
+            print(mixtures.shape)
             est_sources = self(mixtures)
-            loss = self.loss_func["val"](est_sources, targets)
+            loss = self.loss_func["val"](est_sources, targets, num_spks)
             self.log(
                 "val_loss",
                 loss,
@@ -137,10 +137,10 @@ class AudioLightningModule(pl.LightningModule):
 
         # cal test loss
         if (self.trainer.current_epoch) % 10 == 0 and dataloader_idx == 1:
-            mixtures, targets, _ = batch
+            mixtures, targets, mix_id, num_spks = batch
             # print(mixtures.shape)
             est_sources = self(mixtures)
-            tloss = self.loss_func["val"](est_sources, targets)
+            tloss = self.loss_func["val"](est_sources, targets, num_spks)
             self.log(
                 "test_loss",
                 tloss,

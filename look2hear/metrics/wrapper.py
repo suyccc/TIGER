@@ -33,7 +33,25 @@ class MetricsTracker:
             PairwiseNegSDR("snr", zero_mean=False), pit_from="pw_mtx"
         )
 
-    def __call__(self, mix, clean, estimate, key):
+    def __call__(self, mix, clean, estimate, key, n_src):
+        # import pdb; pdb.set_trace()
+        if n_src is not None and n_src != clean.size(0):
+            # Calculate energy for each source
+            target_energy = torch.sum(clean ** 2, dim=1)  # [n_src]
+            est_energy = torch.sum(estimate ** 2, dim=1)  # [n_src]
+
+            # Get indices of n_src sources with highest energy
+            _, target_indices = torch.topk(target_energy, k=n_src)  # [n_src]
+            _, est_indices = torch.topk(est_energy, k=n_src)        # [n_src]
+
+            # Select top n_src sources
+            filtered_clean = clean[target_indices]       # [n_src, time]
+            filtered_estimate = estimate[est_indices]    # [n_src, time]
+
+            # Replace original tensors with filtered ones
+            clean = filtered_clean
+            estimate = filtered_estimate
+        print(clean.shape, estimate.shape)
         # sisnr
         sisnr = self.pit_sisnr(estimate.unsqueeze(0), clean.unsqueeze(0))
         mix = torch.stack([mix] * clean.shape[0], dim=0)

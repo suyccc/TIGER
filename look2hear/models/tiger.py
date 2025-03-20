@@ -599,7 +599,7 @@ class TIGER(BaseModel):
         return input, rest
         
     def forward(self, input):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # input shape: (B, C, T)
         was_one_d = False
         if input.ndim == 1:
@@ -646,11 +646,14 @@ class TIGER(BaseModel):
         # pdb.set_trace()
         sep_subband_spec = []
         for i in range(self.nband):
-            import pdb; pdb.set_trace()
-            this_output = self.mask[i](sep_mask_output[:,:,i].view()).view(batch_size*nch*self.num_output, 2, self.num_output, self.band_width[i], -1)
-            this_mask = this_output[:,0] * torch.sigmoid(this_output[:,1])  # B*nch, 2, K, BW, T
-            this_mask_real = this_mask[:,0]  # B*nch, K, BW, T
-            this_mask_imag = this_mask[:,1]  # B*nch, K, BW, T
+            # import pdb; pdb.set_trace()
+            this_output = self.mask[i](sep_mask_output[:,:,i].view(batch_size*nch*self.num_output, 1, -1)).view(batch_size*nch*self.num_output, 2, self.band_width[i], -1)
+            # this_mask = this_output[:,0] * torch.sigmoid(this_output[:,1])  # B*nch, 2, K, BW, T
+            this_mask_real = this_output[:,0]  # B*nch*K, BW, T
+            this_mask_imag = this_output[:,1]  # B*nch*K, BW, T
+            # view this mask as B*nch, K, BW, T
+            this_mask_real = this_mask_real.view(batch_size*nch, self.num_output, self.band_width[i], -1)
+            this_mask_imag = this_mask_imag.view(batch_size*nch, self.num_output, self.band_width[i], -1)
             # force mask sum to 1
             this_mask_real_sum = this_mask_real.sum(1).unsqueeze(1)  # B*nch, 1, BW, T
             this_mask_imag_sum = this_mask_imag.sum(1).unsqueeze(1)  # B*nch, 1, BW, T
@@ -675,11 +678,11 @@ class TIGER(BaseModel):
 
             # pdb.set_trace()
         sep_subband_spec = torch.cat(sep_subband_spec, 2)
-        pdb.set_trace()
+        # pdb.set_trace()
         output = torch.istft(sep_subband_spec.view(batch_size*nch*self.num_output, self.enc_dim, -1), 
                              n_fft=self.win, hop_length=self.stride,
                              window=torch.hann_window(self.win).to(input.device).type(input.type()), length=nsample)
-        pdb.set_trace()
+        # pdb.set_trace()
         output = output.view(batch_size*nch, self.num_output, -1)
         # if was_one_d:
         #     return output.squeeze(0)

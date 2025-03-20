@@ -101,7 +101,7 @@ class AudioLightningModule(pl.LightningModule):
                 mixtures = targets.sum(1)
         # print(mixtures.shape)
         est_sources = self(mixtures)
-        loss = self.loss_func["train"](est_sources, targets, num_spks)
+        loss = self.loss_func["train"](est_sources, targets)
 
         self.log(
             "train_loss",
@@ -119,9 +119,9 @@ class AudioLightningModule(pl.LightningModule):
         # cal val loss
         if dataloader_idx == 0:
             mixtures, targets, mix_id, num_spks = batch
-            print(mixtures.shape)
+            # print(mixtures.shape)
             est_sources = self(mixtures)
-            loss = self.loss_func["val"](est_sources, targets, num_spks)
+            loss = self.loss_func["val"](est_sources, targets)
             self.log(
                 "val_loss",
                 loss,
@@ -140,7 +140,8 @@ class AudioLightningModule(pl.LightningModule):
             mixtures, targets, mix_id, num_spks = batch
             # print(mixtures.shape)
             est_sources = self(mixtures)
-            tloss = self.loss_func["val"](est_sources, targets, num_spks)
+
+            tloss = self.loss_func["val"](est_sources, targets)
             self.log(
                 "test_loss",
                 tloss,

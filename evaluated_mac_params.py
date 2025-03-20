@@ -27,7 +27,7 @@ parser.add_argument(
     "--exp_dir", default="exp/tmp", help="Full path to save best validation model"
 )
 
-with open("configs/tiger.yml") as f:
+with open("configs/tiger-small-lbm.yml") as f:
     def_conf = yaml.safe_load(f)
 parser = prepare_parser_from_dict(def_conf, parser=parser)
 
@@ -37,7 +37,7 @@ audiomodel = getattr(look2hear.models, arg_dic["audionet"]["audionet_name"])(
     **arg_dic["audionet"]["audionet_config"]
 )
 # 配置GPU为mps
-device = torch.device("mps")
+device = torch.device("cuda")
 a = torch.randn(1, 1, 16000).to(device)
 total_macs = 0
 total_params = 0

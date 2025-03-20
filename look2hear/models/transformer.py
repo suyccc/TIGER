@@ -92,7 +92,9 @@ class TransformerPredictor(nn.Module):
 
         src = x
         mask = None
-        hs, memory = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos)
+        input_src = self.input_proj(src)
+        # import pdb; pdb.set_trace()
+        hs, memory = self.transformer(input_src, mask, self.query_embed.weight, pos)
         # hs, memory = self.transformer(src, mask, self.query_embed.weight, pos)
 
         # FIXME h_boxes takes the last one computed, keep this in mind
@@ -175,6 +177,7 @@ class Transformer(nn.Module):
 
         tgt = torch.zeros_like(query_embed)
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
+        # import pdb; pdb.set_trace()
         hs = self.decoder(
             tgt, memory, memory_key_padding_mask=mask, pos=pos_embed, query_pos=query_embed
         )

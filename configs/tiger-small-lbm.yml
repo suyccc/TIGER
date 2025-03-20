@@ -2,13 +2,18 @@
 audionet:
   audionet_name: TIGER
   audionet_config:
-    out_channels: 192
+    out_channels: 128
     in_channels: 256
     num_blocks: 4
     upsampling_depth: 5
     win: 640
     stride: 160
     num_sources: 3
+    dec_hidden_dim: 256
+    dec_n_head: 4
+    dec_layers: 2
+    dec_deep_supervision: False
+    
 
 # Loss config
 loss:
@@ -68,4 +73,4 @@ datamodule:
     persistent_workers: false
 
 exp:
-  exp_name: TIGER-LibriUMix
+  exp_name: TIGER-TD-LibriUMix

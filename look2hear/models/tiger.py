@@ -451,7 +451,8 @@ class Recurrent(nn.Module):
         att_hid_chan=4,
         kernel_size: int = 8, 
         stride: int = 1,
-        _iter=4
+        _iter=4,
+        return_middle_block: int=None
     ):
         super().__init__()
         self.nband = nband
@@ -472,19 +473,23 @@ class Recurrent(nn.Module):
         self.concat_block = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, 1, 1, groups=out_channels), nn.PReLU()
         )
+        self.return_middle_block = return_middle_block
 
     def forward(self, x):
         # B, nband, N, T
         B, nband, N, T = x.shape
         x = x.permute(0, 2, 1, 3).contiguous() # B, N, nband, T
         mixture = x.clone()
+        x_middle = None
         for i in range(self.iter):
             if i == 0:
                 x = self.freq_time_process(x, B, nband, N, T) # B, N, nband, T
             else:
                 x = self.freq_time_process(self.concat_block(mixture + x), B, nband, N, T) # B, N, nband, T
-                
-        return x.permute(0, 2, 1, 3).contiguous() # B, nband, N, T
+                if i == (self.return_middle_block - 1):
+                    x_middle = x.clone()
+                    x_middle = x_middle.permute(0, 2, 1, 3).contiguous()
+        return x.permute(0, 2, 1, 3).contiguous(), x_middle # B, nband, N, T
     
     def freq_time_process(self, x, B, nband, N, T):
         # Process Frequency Path
@@ -524,7 +529,8 @@ class TIGER(BaseModel):
         dec_hidden_dim=256,
         dec_n_head=4,
         dec_layers=2,
-        dec_deep_supervision=False
+        dec_deep_supervision=False,
+        mask_feature_block=0
     ):
         super(TIGER, self).__init__(sample_rate=sample_rate)
         
@@ -561,8 +567,10 @@ class TIGER(BaseModel):
                                         )
                           )
 
-        self.separator = Recurrent(self.feature_dim, in_channels, self.nband, upsampling_depth, att_n_head, att_hid_chan, att_kernel_size, att_stride, num_blocks)       
-        
+        self.separator = Recurrent(self.feature_dim, in_channels, self.nband, upsampling_depth, 
+                        att_n_head, att_hid_chan, att_kernel_size, att_stride, num_blocks, 
+                        return_middle_block=mask_feature_block)       
+        self.mask_feature_block = mask_feature_block
         self.mask = nn.ModuleList([])
         # print(self.feature_dim)
         # print(self.num_sources)
@@ -637,10 +645,14 @@ class TIGER(BaseModel):
         subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
         # import pdb; pdb.set_trace()
         # separator
-        sep_output = self.separator(subband_feature.view(batch_size*nch, self.nband, self.feature_dim, -1))  # B, nband, N, T
+        sep_output, middle_output = self.separator(subband_feature.view(batch_size*nch, self.nband, self.feature_dim, -1))  # B, nband, N, T
         sep_output = sep_output.view(batch_size*nch, self.nband, self.feature_dim, -1) # B, nband, N, T
-        dec_input = sep_output.permute(0, 2, 1, 3).contiguous()  # B, N, nband, T
-        mask_feature = dec_input.clone()
+        mask_feature = sep_output.permute(0, 2, 1, 3).contiguous()  # B, N, nband, T
+        if self.mask_feature_block > 0:
+            middle_output = middle_output.view(batch_size*nch, self.nband, self.feature_dim, -1)
+            dec_input = middle_output.permute(0, 2, 1, 3).contiguous()
+        else:
+            dec_input = mask_feature.clone()
         sep_mask_output = self.transformer_decoder(dec_input, mask_feature) # B, K, nband, T
         # sep_mask_output = sep_mask_output.permute(0, 2, 1, 3).contiguous()  # B, nband, K, T
         # pdb.set_trace()

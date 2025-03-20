@@ -13,6 +13,7 @@ audionet:
     dec_n_head: 4
     dec_layers: 2
     dec_deep_supervision: False
+    mask_feature_block: 2
     
 
 # Loss config

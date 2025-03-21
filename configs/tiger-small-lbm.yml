@@ -24,6 +24,7 @@ loss:
     config:
       pit_from: pw_mtx
       threshold_byloss: false
+      permute_start_epoch: 80
   val:
     loss_func: PITLossWrapper
     sdr_type: pairwise_neg_sisdr
@@ -34,7 +35,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1,4,7]
+  gpus: [0]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -74,4 +75,4 @@ datamodule:
     persistent_workers: false
 
 exp:
-  exp_name: TIGER-TD-LibriUMix
+  exp_name: test

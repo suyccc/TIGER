@@ -2,11 +2,11 @@ from itertools import permutations
 import torch
 from torch import nn
 from scipy.optimize import linear_sum_assignment
-
+from .matrix import multisrc_neg_snr
 
 class PITLossWrapper(nn.Module):
     def __init__(
-        self, loss_func, pit_from="pw_mtx", equidistant_weight=False, perm_reduce=None, threshold_byloss=True
+        self, loss_func, pit_from="pw_mtx", equidistant_weight=False, perm_reduce=None, threshold_byloss=True, permute_start_epoch=0
     ):
         super().__init__()
         self.loss_func = loss_func
@@ -19,8 +19,14 @@ class PITLossWrapper(nn.Module):
                 "Unsupported loss function type {} for now. Expected"
                 "one of [`pw_mtx`, `pw_pt`, `perm_avg`, `pw_mtx_broadcast`]".format(self.pit_from)
             )
+        self.permute_start_epoch = permute_start_epoch
+        self.loss_func_s1 = multisrc_neg_snr
 
-    def forward(self, ests, targets, return_ests=False, reduce_kwargs=None, **kwargs):
+    def forward(self, ests, targets, return_ests=False, reduce_kwargs=None, epoch=None, **kwargs):
+        if epoch is not None and epoch < self.permute_start_epoch:
+            m_loss = self.loss_func_s1(ests, targets, **kwargs)
+            import pdb; pdb.set_trace()
+            return m_loss.mean()
         n_src = targets.shape[1]
         if self.pit_from == "pw_mtx":
             pw_loss = self.loss_func(ests, targets, **kwargs)

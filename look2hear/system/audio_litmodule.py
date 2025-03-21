@@ -101,7 +101,7 @@ class AudioLightningModule(pl.LightningModule):
                 mixtures = targets.sum(1)
         # print(mixtures.shape)
         est_sources = self(mixtures)
-        loss = self.loss_func["train"](est_sources, targets)
+        loss = self.loss_func["train"](est_sources, targets, epoch=self.current_epoch)
 
         self.log(
             "train_loss",

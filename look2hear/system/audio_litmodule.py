@@ -3,7 +3,8 @@ import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from collections.abc import MutableMapping
 from speechbrain.processing.speech_augmentation import SpeedPerturb
-
+from ..utils.unknown_speaker import filter_non_empty_source
+from ..models import TIGER, TIGER_BASELINE
 def flatten_dict(d, parent_key="", sep="_"):
     """Flattens a dictionary into a single-level dictionary while preserving
     parent keys. Taken from
@@ -62,8 +63,11 @@ class AudioLightningModule(pl.LightningModule):
         # self.print(self.audio_model)
         self.validation_step_outputs = []
         self.test_step_outputs = []
-        
-
+        self.filter_train = self.config["training"]["filter_train"]
+        if self.filter_train:
+            print("Only calculate loss on existing speakers, ignore empty speaker in training. ")
+        else:
+            print("Caculate loss on all sources, including empty speaker.")
     def forward(self, wav, mouth=None):
         """Applies forward pass of the model.
 
@@ -73,8 +77,9 @@ class AudioLightningModule(pl.LightningModule):
         return self.audio_model(wav)
 
     def training_step(self, batch, batch_nb):
-        mixtures, targets, mix_id, num_spks = batch
-        
+        mixtures, targets, mix_id, spk_labels = batch
+        num_spks = [sum(spk_label) for spk_label in spk_labels]
+        # import pdb; pdb.set_trace()
         new_targets = []
         min_len = -1
         if self.config["training"]["SpeedAug"] == True:
@@ -101,8 +106,17 @@ class AudioLightningModule(pl.LightningModule):
                 mixtures = targets.sum(1)
         # print(mixtures.shape)
         est_sources = self(mixtures)
-        loss = self.loss_func["train"](est_sources, targets, epoch=self.current_epoch)
-
+        # import pdb; pdb.set_trace()
+        if self.audio_model.name == 'tiger-td' and self.filter_train:
+            loss = 0.0
+            for i in range(len(est_sources)):
+                est_source, target, num_spk = est_sources[i], targets[i], num_spks[i]
+                if num_spk != target.size(0):
+                    target, est_source = filter_non_empty_source(target, est_source, num_spk)
+                loss += self.loss_func["val"](est_source.unsqueeze(0), target.unsqueeze(0))
+            loss /= len(est_sources)
+        else:
+            loss = self.loss_func["train"](est_sources, targets, epoch=self.current_epoch)
         self.log(
             "train_loss",
             loss,
@@ -118,10 +132,18 @@ class AudioLightningModule(pl.LightningModule):
     def validation_step(self, batch, batch_nb, dataloader_idx):
         # cal val loss
         if dataloader_idx == 0:
-            mixtures, targets, mix_id, num_spks = batch
+            mixtures, targets, mix_id, spk_labels = batch
+            num_spks = [sum(spk_label) for spk_label in spk_labels]
+            
             # print(mixtures.shape)
             est_sources = self(mixtures)
-            loss = self.loss_func["val"](est_sources, targets)
+            loss = 0.0
+            for i in range(len(est_sources)):
+                est_source, target, num_spk = est_sources[i], targets[i], num_spks[i]
+                if num_spk != target.size(0):
+                    target, est_source = filter_non_empty_source(target, est_source, num_spk)
+                loss += self.loss_func["val"](est_source.unsqueeze(0), target.unsqueeze(0))
+            loss /= len(est_sources)
             self.log(
                 "val_loss",
                 loss,
@@ -140,8 +162,14 @@ class AudioLightningModule(pl.LightningModule):
             mixtures, targets, mix_id, num_spks = batch
             # print(mixtures.shape)
             est_sources = self(mixtures)
-
-            tloss = self.loss_func["val"](est_sources, targets)
+            tloss = 0.0
+            for i in range(len(est_sources)):
+                est_source, target, num_spk = est_sources[i], targets[i], num_spks[i]
+                if num_spk != target.size(0):
+                    target, est_source = filter_non_empty_source(target, est_source, num_spk)
+                tloss += self.loss_func["val"](est_source.unsqueeze(0), target.unsqueeze(0))
+            tloss /= len(est_sources)
+            
             self.log(
                 "test_loss",
                 tloss,

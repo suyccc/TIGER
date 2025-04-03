@@ -23,10 +23,10 @@ class PITLossWrapper(nn.Module):
         self.loss_func_s1 = multisrc_neg_snr
 
     def forward(self, ests, targets, return_ests=False, reduce_kwargs=None, epoch=None, **kwargs):
-        if epoch is not None and epoch < self.permute_start_epoch:
-            m_loss = self.loss_func_s1(ests, targets, **kwargs)
-            import pdb; pdb.set_trace()
-            return m_loss.mean()
+        # if epoch is not None and epoch < self.permute_start_epoch:
+        #     m_loss = self.loss_func_s1(ests, targets, **kwargs)
+        #     # import pdb; pdb.set_trace()
+        #     return m_loss.mean()
         n_src = targets.shape[1]
         if self.pit_from == "pw_mtx":
             pw_loss = self.loss_func(ests, targets, **kwargs)
@@ -89,8 +89,8 @@ class PITLossWrapper(nn.Module):
                 if min_loss[min_loss > -30].nelement() > 0:
                     min_loss = min_loss[min_loss > -30]
             mean_loss = torch.mean(min_loss)
+            import pdb; pdb.set_trace()
             reordered = self.reordered_sources(ests, batch_indices)
-            # import pdb; pdb.set_trace()
             if self.pit_from == "pw_mtx_broadcast":
                 mean_loss += 0.5 * self.loss_func[1](reordered, targets, **kwargs).mean()
             if not return_ests:

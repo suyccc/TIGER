@@ -286,6 +286,7 @@ class LibriUMixDataset(Dataset):
             
             # Load sources
             source_arrays = []
+            spk_arrays = []
             for i, src in enumerate(self.sources):
                 # if source is not empty
                 if src[idx][1] > 0: 
@@ -293,6 +294,7 @@ class LibriUMixDataset(Dataset):
                         src[idx][0], start=rand_start, stop=stop, dtype="float32"
                     )
                     source_arrays.append(s)
+                    spk_arrays.append(1)
                 else:
                     if stop is None:
                         zero_len = len(x)
@@ -301,6 +303,7 @@ class LibriUMixDataset(Dataset):
                     # create a zero np array, the shape should be (1, zero_len)
                     zero_array = np.zeros(zero_len, dtype=np.float32).reshape(1, -1)
                     source_arrays.append(zero_array)
+                    spk_arrays.append(0)
             
         
             
@@ -314,7 +317,7 @@ class LibriUMixDataset(Dataset):
                 mixture = normalize_tensor_wav(mixture, eps=self.EPS, std=m_std)
                 sources = normalize_tensor_wav(sources, eps=self.EPS, std=m_std)
 
-            return mixture, sources, self.mix[idx][0].split("/")[-1], num_speakers
+            return mixture, sources, self.mix[idx][0].split("/")[-1], spk_arrays
 
     def __getitem__(self, index: int):
         return self.preprocess_audio_only(index)

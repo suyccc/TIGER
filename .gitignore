@@ -2,3 +2,5 @@
 *.pyc
 Experiments/*
 result/*
+DataPreProcess/unknown_speaker/**
+!DataPreProcess/unknown_speaker/**/*.py

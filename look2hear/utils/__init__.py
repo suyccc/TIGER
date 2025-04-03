@@ -14,7 +14,7 @@ from .complex_utils import is_complex, is_torch_complex_tensor, new_complex_like
 from .get_layer_from_string import get_layer
 from .inversible_interface import InversibleInterface
 from .nets_utils import make_pad_mask
-
+from .unknown_speaker import filter_non_empty_source
 __all__ = [
     "STFT",
     "pad_x_to_y",
@@ -38,4 +38,5 @@ __all__ = [
     "get_layer",
     "InversibleInterface",
     "make_pad_mask",
+    "filter_non_empty_source"
 ]

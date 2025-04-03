@@ -30,7 +30,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import wandb
-wandb.login()
+wandb.login(key="1d1073707876f0a4af514b4c4d8b128b2ffac7aa")
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

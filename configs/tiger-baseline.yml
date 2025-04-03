@@ -1,6 +1,6 @@
 # Network config
 audionet:
-  audionet_name: TIGER
+  audionet_name: TIGER_BASELINE
   audionet_config:
     out_channels: 192
     in_channels: 256
@@ -9,11 +9,6 @@ audionet:
     win: 640
     stride: 160
     num_sources: 3
-    dec_hidden_dim: 256
-    dec_n_head: 4
-    dec_layers: 2
-    dec_deep_supervision: False
-    mask_feature_block: 0
     
 
 # Loss config
@@ -34,7 +29,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0]
+  gpus: 4
   parallel: ddp
   epochs: 500
   early_stop:
@@ -43,7 +38,6 @@ training:
     patience: 20
     verbose: true
   SpeedAug: False
-  filter_train: False
   
 # Optim config
 optimizer:
@@ -58,28 +52,13 @@ scheduler:
     patience: 10
     factor: 0.5
 
-# Data config
-datamodule:
-  data_name: LibriUMixModuleRemix
-  data_config:
-    train_dir: DataPreProcess/unknown_speaker/LibriUmix/train-100
-    valid_dir: DataPreProcess/unknown_speaker/LibriUmix/dev
-    test_dir: DataPreProcess/unknown_speaker/LibriUmix/test
-    n_src: 3
-    sample_rate: 16000
-    segment: 3.0
-    normalize_audio: false
-    batch_size: 2
-    num_workers: 8
-    pin_memory: true
-    persistent_workers: false
-  
+# # Data config
 # datamodule:
-#   data_name: EchoUSetDataModule
+#   data_name: LibriUMixModuleRemix
 #   data_config:
-#     train_dir: DataPreProcess/unknown_speaker/EchoSet3/train
-#     valid_dir: DataPreProcess/unknown_speaker/EchoSet3/val
-#     test_dir: DataPreProcess/unknown_speaker/EchoSet3/test
+#     train_dir: DataPreProcess/unknown_speaker/LibriUmix/train-100
+#     valid_dir: DataPreProcess/unknown_speaker/LibriUmix/dev
+#     test_dir: DataPreProcess/unknown_speaker/LibriUmix/test
 #     n_src: 3
 #     sample_rate: 16000
 #     segment: 3.0
@@ -89,5 +68,20 @@ datamodule:
 #     pin_memory: true
 #     persistent_workers: false
 
+datamodule:
+  data_name: EchoUSetDataModule
+  data_config:
+    train_dir: DataPreProcess/unknown_speaker/EchoSet3/train
+    valid_dir: DataPreProcess/unknown_speaker/EchoSet3/val
+    test_dir: DataPreProcess/unknown_speaker/EchoSet3/test
+    n_src: 3
+    sample_rate: 16000
+    segment: 3.0
+    normalize_audio: false
+    batch_size: 2
+    num_workers: 8
+    pin_memory: true
+    persistent_workers: false
+
 exp:
-  exp_name: tiger-td-dim192-lbm
+  exp_name: tiger-baseline-echo3

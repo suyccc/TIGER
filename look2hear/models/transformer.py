@@ -10,7 +10,7 @@ Copy-paste from torch.nn.Transformer with modifications:
 """
 import copy
 from typing import List, Optional
-
+import pdb
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -83,7 +83,10 @@ class TransformerPredictor(nn.Module):
         else:
             self.input_proj = nn.Sequential()
         self.aux_loss = deep_supervision
-
+        self.speaker_class_embed = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Sigmoid()
+        )
         self.mask_embed = MLP(hidden_dim, hidden_dim, mask_dim, 3)
 
 
@@ -93,13 +96,15 @@ class TransformerPredictor(nn.Module):
         src = x
         mask = None
         input_src = self.input_proj(src)
-        # import pdb; pdb.set_trace()
         hs, memory = self.transformer(input_src, mask, self.query_embed.weight, pos)
         # hs, memory = self.transformer(src, mask, self.query_embed.weight, pos)
 
         # FIXME h_boxes takes the last one computed, keep this in mind
         mask_embed = self.mask_embed(hs[-1]) # [bs, queries, embed]
         # mask_embed = hs[-1]
+        class_embed = self.speaker_class_embed(hs[-1]).squeeze(-1)
+        class_embed_binary = (class_embed > 0.5).float()
+        pdb.set_trace()
         outputs_seg_masks = torch.einsum("bqc,bchw->bqhw", mask_embed, mask_features)
         return outputs_seg_masks
         # if self.mask_classification:

@@ -6,8 +6,8 @@ import torch.nn.functional as F
 import math
 from .base_model import BaseModel
 from ..layers import activations, normalizations
-from .transformer import TransformerPredictor
-import pdb
+
+
 def GlobLN(nOut):
     return nn.GroupNorm(1, nOut, eps=1e-8)
 
@@ -451,8 +451,7 @@ class Recurrent(nn.Module):
         att_hid_chan=4,
         kernel_size: int = 8, 
         stride: int = 1,
-        _iter=4,
-        return_middle_block: int=None
+        _iter=4
     ):
         super().__init__()
         self.nband = nband
@@ -473,23 +472,19 @@ class Recurrent(nn.Module):
         self.concat_block = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, 1, 1, groups=out_channels), nn.PReLU()
         )
-        self.return_middle_block = return_middle_block
 
     def forward(self, x):
         # B, nband, N, T
         B, nband, N, T = x.shape
         x = x.permute(0, 2, 1, 3).contiguous() # B, N, nband, T
         mixture = x.clone()
-        x_middle = None
         for i in range(self.iter):
             if i == 0:
                 x = self.freq_time_process(x, B, nband, N, T) # B, N, nband, T
             else:
                 x = self.freq_time_process(self.concat_block(mixture + x), B, nband, N, T) # B, N, nband, T
-                if i == (self.return_middle_block - 1):
-                    x_middle = x.clone()
-                    x_middle = x_middle.permute(0, 2, 1, 3).contiguous()
-        return x.permute(0, 2, 1, 3).contiguous(), x_middle # B, nband, N, T
+                
+        return x.permute(0, 2, 1, 3).contiguous() # B, nband, N, T
     
     def freq_time_process(self, x, B, nband, N, T):
         # Process Frequency Path
@@ -511,7 +506,7 @@ class Recurrent(nn.Module):
         x = frame_fea + residual_2 # B, N, nband, T
         return x
         
-class TIGER(BaseModel):
+class TIGER_BASELINE(BaseModel):
     def __init__(
         self,
         out_channels=128,
@@ -526,14 +521,9 @@ class TIGER(BaseModel):
         stride=512,
         num_sources=2,
         sample_rate=44100,
-        dec_hidden_dim=256,
-        dec_n_head=4,
-        dec_layers=2,
-        dec_deep_supervision=False,
-        mask_feature_block=0
     ):
-        super(TIGER, self).__init__(sample_rate=sample_rate)
-        self.name = 'tiger-td'
+        super(TIGER_BASELINE, self).__init__(sample_rate=sample_rate)
+        self.name = 'tiger-baseline'
         self.sample_rate = sample_rate
         self.win = win
         self.stride = stride
@@ -542,10 +532,6 @@ class TIGER(BaseModel):
         self.feature_dim = out_channels
         self.num_output = num_sources
         self.eps = torch.finfo(torch.float32).eps
-        self.dec_hidden_dim = dec_hidden_dim
-        self.dec_n_head = dec_n_head
-        self.dec_layers = dec_layers
-        self.dec_deep_supervision = dec_deep_supervision
 
         # 0-1k (25 hop), 1k-2k (100 hop), 2k-4k (250 hop), 4k-8k (500 hop)
         bandwidth_25 = int(np.floor(25 / (sample_rate / 2.) * self.enc_dim))
@@ -567,28 +553,15 @@ class TIGER(BaseModel):
                                         )
                           )
 
-        self.separator = Recurrent(self.feature_dim, in_channels, self.nband, upsampling_depth, 
-                        att_n_head, att_hid_chan, att_kernel_size, att_stride, num_blocks, 
-                        return_middle_block=mask_feature_block)       
-        self.mask_feature_block = mask_feature_block
+        self.separator = Recurrent(self.feature_dim, in_channels, self.nband, upsampling_depth, att_n_head, att_hid_chan, att_kernel_size, att_stride, num_blocks)       
+        
         self.mask = nn.ModuleList([])
-        # print(self.feature_dim)
-        # print(self.num_sources)
         for i in range(self.nband):
             self.mask.append(nn.Sequential(
                                            nn.PReLU(),
-                                           nn.Conv1d(1, self.band_width[i]*2, 1)
+                                           nn.Conv1d(self.feature_dim, self.band_width[i]*4*num_sources, 1, groups=num_sources)
                                           )
                             )
-        self.transformer_decoder = TransformerPredictor(
-            in_channels=self.feature_dim,
-            hidden_dim=self.dec_hidden_dim,
-            num_queries=num_sources,
-            nheads=self.dec_n_head,
-            dec_layers=self.dec_layers,
-            deep_supervision=self.dec_deep_supervision,
-            mask_dim=self.feature_dim,
-        )
 
     def pad_input(self, input, window, stride):
         """
@@ -607,7 +580,6 @@ class TIGER(BaseModel):
         return input, rest
         
     def forward(self, input):
-        # import pdb; pdb.set_trace()
         # input shape: (B, C, T)
         was_one_d = False
         if input.ndim == 1:
@@ -620,14 +592,14 @@ class TIGER(BaseModel):
             input = input
         batch_size, nch, nsample = input.shape
         input = input.view(batch_size*nch, -1)
-        # pdb.set_trace()
+
         # frequency-domain separation
         spec = torch.stft(input, n_fft=self.win, hop_length=self.stride, 
                           window=torch.hann_window(self.win).to(input.device).type(input.type()),
                           return_complex=True)
 
         # print(spec.shape)
-        # pdb.set_trace()
+
         # concat real and imag, split to subbands
         spec_RI = torch.stack([spec.real, spec.imag], 1)  # B*nch, 2, F, T
         subband_spec_RI = []
@@ -637,7 +609,7 @@ class TIGER(BaseModel):
             subband_spec_RI.append(spec_RI[:,:,band_idx:band_idx+self.band_width[i]].contiguous())
             subband_spec.append(spec[:,band_idx:band_idx+self.band_width[i]])  # B*nch, BW, T
             band_idx += self.band_width[i]
-        # pdb.set_trace()
+
         # normalization and bottleneck
         subband_feature = []
         for i in range(len(self.band_width)):
@@ -645,29 +617,15 @@ class TIGER(BaseModel):
         subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
         # import pdb; pdb.set_trace()
         # separator
-        sep_output, middle_output = self.separator(subband_feature.view(batch_size*nch, self.nband, self.feature_dim, -1))  # B, nband, N, T
-        sep_output = sep_output.view(batch_size*nch, self.nband, self.feature_dim, -1) # B, nband, N, T
-        mask_feature = sep_output.permute(0, 2, 1, 3).contiguous()  # B, N, nband, T
-        if self.mask_feature_block > 0:
-            middle_output = middle_output.view(batch_size*nch, self.nband, self.feature_dim, -1)
-            dec_input = middle_output.permute(0, 2, 1, 3).contiguous()
-        else:
-            dec_input = mask_feature.clone()
-        dec_output = self.transformer_decoder(dec_input, mask_feature) 
-        sep_mask_output = dec_output['mask'] # B, K, nband, T
-        spk_output = dec_output['spk'] # B, K
-        # sep_mask_output = sep_mask_output.permute(0, 2, 1, 3).contiguous()  # B, nband, K, T
-        # pdb.set_trace()
+        sep_output = self.separator(subband_feature.view(batch_size*nch, self.nband, self.feature_dim, -1))  # B, nband, N, T
+        sep_output = sep_output.view(batch_size*nch, self.nband, self.feature_dim, -1)
+        
         sep_subband_spec = []
         for i in range(self.nband):
-            # import pdb; pdb.set_trace()
-            this_output = self.mask[i](sep_mask_output[:,:,i].view(batch_size*nch*self.num_output, 1, -1)).view(batch_size*nch*self.num_output, 2, self.band_width[i], -1)
-            # this_mask = this_output[:,0] * torch.sigmoid(this_output[:,1])  # B*nch, 2, K, BW, T
-            this_mask_real = this_output[:,0]  # B*nch*K, BW, T
-            this_mask_imag = this_output[:,1]  # B*nch*K, BW, T
-            # view this mask as B*nch, K, BW, T
-            this_mask_real = this_mask_real.view(batch_size*nch, self.num_output, self.band_width[i], -1)
-            this_mask_imag = this_mask_imag.view(batch_size*nch, self.num_output, self.band_width[i], -1)
+            this_output = self.mask[i](sep_output[:,i]).view(batch_size*nch, 2, 2, self.num_output, self.band_width[i], -1)
+            this_mask = this_output[:,0] * torch.sigmoid(this_output[:,1])  # B*nch, 2, K, BW, T
+            this_mask_real = this_mask[:,0]  # B*nch, K, BW, T
+            this_mask_imag = this_mask[:,1]  # B*nch, K, BW, T
             # force mask sum to 1
             this_mask_real_sum = this_mask_real.sum(1).unsqueeze(1)  # B*nch, 1, BW, T
             this_mask_imag_sum = this_mask_imag.sum(1).unsqueeze(1)  # B*nch, 1, BW, T
@@ -676,32 +634,15 @@ class TIGER(BaseModel):
             est_spec_real = subband_spec[i].real.unsqueeze(1) * this_mask_real - subband_spec[i].imag.unsqueeze(1) * this_mask_imag  # B*nch, K, BW, T
             est_spec_imag = subband_spec[i].real.unsqueeze(1) * this_mask_imag + subband_spec[i].imag.unsqueeze(1) * this_mask_real  # B*nch, K, BW, T
             sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
-        # for i in range(self.nband):
-        #     this_output = self.mask[i](sep_output[:,i]).view(batch_size*nch, 2, 2, self.num_output, self.band_width[i], -1)
-        #     this_mask = this_output[:,0] * torch.sigmoid(this_output[:,1])  # B*nch, 2, K, BW, T
-        #     this_mask_real = this_mask[:,0]  # B*nch, K, BW, T
-        #     this_mask_imag = this_mask[:,1]  # B*nch, K, BW, T
-        #     # force mask sum to 1
-        #     this_mask_real_sum = this_mask_real.sum(1).unsqueeze(1)  # B*nch, 1, BW, T
-        #     this_mask_imag_sum = this_mask_imag.sum(1).unsqueeze(1)  # B*nch, 1, BW, T
-        #     this_mask_real = this_mask_real - (this_mask_real_sum - 1) / self.num_output
-        #     this_mask_imag = this_mask_imag - this_mask_imag_sum / self.num_output
-        #     est_spec_real = subband_spec[i].real.unsqueeze(1) * this_mask_real - subband_spec[i].imag.unsqueeze(1) * this_mask_imag  # B*nch, K, BW, T
-        #     est_spec_imag = subband_spec[i].real.unsqueeze(1) * this_mask_imag + subband_spec[i].imag.unsqueeze(1) * this_mask_real  # B*nch, K, BW, T
-        #     sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
-
-            # pdb.set_trace()
         sep_subband_spec = torch.cat(sep_subband_spec, 2)
-        # pdb.set_trace()
+        
         output = torch.istft(sep_subband_spec.view(batch_size*nch*self.num_output, self.enc_dim, -1), 
                              n_fft=self.win, hop_length=self.stride,
                              window=torch.hann_window(self.win).to(input.device).type(input.type()), length=nsample)
         output = output.view(batch_size*nch, self.num_output, -1)
         # if was_one_d:
         #     return output.squeeze(0)
-        pdb.set_trace()
-        
-        return output, spk_output
+        return output
 
     def get_model_args(self):
         model_args = {"n_sample_rate": 2}

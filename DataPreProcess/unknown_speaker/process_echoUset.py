@@ -21,18 +21,13 @@ def preprocess_one_dir(in_data_dir, out_dir, data_type, max_speakers=5):
         mix_files = [f for f in files if f.endswith(".wav") and f.startswith("mix")]
         
         for mix_file in mix_files:
+            # import pdb; pdb.set_trace()
+
             mix_path = os.path.join(root, mix_file)
             try:
                 audio, _ = sf.read(mix_path)
                 file_infos['mix'].append((mix_path, len(audio)))
                 
-                # Process noise file (if exists)
-                noise_path = os.path.join(root, "noise.wav")
-                if os.path.exists(noise_path):
-                    audio, _ = sf.read(noise_path)
-                    file_infos['noise'].append((noise_path, len(audio)))
-                else:
-                    file_infos['noise'].append((None, 0))
                 
                 # Process speaker files
                 for i in range(1, max_speakers + 1):
@@ -82,20 +77,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_dir",
         type=str,
-        default=None,
+        default="/gpfs-flash/hulab/suyuchang/EchoSet3",
         help="Directory path of audio including train, val and test",
     )
     parser.add_argument(
         "--out_dir", 
         type=str, 
-        default=None, 
+        default="/gpfs-flash/hulab/suyuchang/TIGER/DataPreProcess/unknown_speaker/EchoSet3", 
         help="Directory path to put output files"
     )
     parser.add_argument(
         "--max_speakers",
         type=int,
-        default=5,
-        help="Maximum number of speakers to look for (default: 5)"
+        default=3,
+        help="Maximum number of speakers to look for"
     )
     args = parser.parse_args()
     print(args)
